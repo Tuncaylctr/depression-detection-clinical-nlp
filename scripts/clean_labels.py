@@ -20,7 +20,7 @@ from pathlib import Path
 
 def clean_labels(
     label_dir: str = "data/labels",
-    output_dir: str = "data/labels/processed",
+    output_dir: str = "data/processed",
     threshold: int = 10,
     verbose: bool = True
 ) -> pd.DataFrame:
