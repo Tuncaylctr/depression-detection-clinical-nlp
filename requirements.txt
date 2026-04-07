@@ -1,0 +1,12 @@
+## Core data science stack
+numpy>=1.26,<3.0
+pandas>=2.2,<3.0
+
+## Machine learning (Pedregosa et al., 2011)
+scikit-learn>=1.4,<2.0
+
+## Model persistence
+joblib>=1.4
+
+## Visualisation
+matplotlib>=3.8
