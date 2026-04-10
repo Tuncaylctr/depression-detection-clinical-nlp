@@ -50,6 +50,7 @@ data/processed/
 # =============================================================================
 # Trained models (large binary files — use DVC or similar if needed)
 # =============================================================================
+models/
 results/models/
 *.joblib
 *.pkl

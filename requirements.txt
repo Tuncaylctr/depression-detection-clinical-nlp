@@ -10,3 +10,12 @@ joblib>=1.4
 
 ## Visualisation
 matplotlib>=3.8
+seaborn>=0.13
+
+## Deep learning — sentence transformer fine-tuning (Experiments 4 & 5)
+torch>=2.0
+transformers>=4.40
+
+## Progress bars
+tqdm>=4.66
+

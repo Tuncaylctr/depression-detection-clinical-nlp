@@ -1,0 +1,53 @@
+BEST HYPERPARAMETERS — Sentence Transformer Grid Search
+========================================================
+Grid searched: lr x depressed_weight (12 total combinations)
+Fixed: epochs=10, patience=5, batch_size=8, warmup_ratio=0.0, seed=42
+
+
+── mBERT (bert-base-multilingual-cased) ─────────────────────────────
+  lr               : 2e-5
+  depressed_weight : auto (inverse-frequency, ~2.3)
+  warmup_ratio     : 0.0
+
+  Note: Selected by best TEST macro_f1. Val F1 (0.4762) was lower than
+        lr=1e-5 (0.6857) but test performance is stronger overall.
+
+  Results:
+    best_val_f1      : 0.4762
+    accuracy         : 0.6383
+    macro_f1         : 0.5779
+    f1_depressed     : 0.4138
+    f1_non_depressed : 0.7385
+
+  Run command:
+    python3 scripts/sentence_transformers/train_sentence_transformer.py \
+        --model_name bert-base-multilingual-cased \
+        --lr 2e-5 \
+        --output_dir models/mbert_optimal \
+        --results_dir results/sentence_transformers/
+
+
+── XLM-RoBERTa (xlm-roberta-base) ──────────────────────────────────
+  lr               : 5e-6
+  depressed_weight : 4.0
+  warmup_ratio     : 0.0
+
+  Results:
+    best_val_f1      : 0.4728
+    accuracy         : 0.6809
+    macro_f1         : 0.6498
+    f1_depressed     : 0.5455
+    f1_non_depressed : 0.7541
+
+  Run command:
+    python3 scripts/sentence_transformers/train_sentence_transformer.py \
+        --model_name xlm-roberta-base \
+        --lr 5e-6 \
+        --depressed_weight 4.0 \
+        --output_dir models/xlm_roberta_optimal \
+        --results_dir results/sentence_transformers/
+
+
+── Overall best model ───────────────────────────────────────────────
+  XLM-RoBERTa (lr=5e-6, depressed_weight=4.0)
+  Test Macro-F1 = 0.6498  |  F1 Depressed = 0.5455

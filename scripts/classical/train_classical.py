@@ -77,10 +77,10 @@ warnings.filterwarnings("ignore")
 # Paths
 # ---------------------------------------------------------------------------
 
-BASE_DIR    = Path(__file__).parent.parent          # project root
+BASE_DIR    = Path(__file__).parent.parent.parent   # project root
 LABEL_DIR   = BASE_DIR / "data" / "labels"
 TRANS_DIR   = BASE_DIR / "data" / "transcripts"
-RESULTS_DIR = BASE_DIR / "results"
+RESULTS_DIR = BASE_DIR / "results" / "classical"
 MODELS_DIR  = RESULTS_DIR / "models"
 FIGURES_DIR = RESULTS_DIR / "figures"
 
