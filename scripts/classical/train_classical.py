@@ -2,8 +2,7 @@
 """
 train_classical.py — Classical ML pipeline for DAIC-WOZ depression detection.
 
-Pipeline overview
------------------
+Pipeline overview:
 1.  Load and preprocess transcripts via preprocess.py
 2.  Partition data using the *official* DAIC-WOZ split IDs:
       Train  = train_split_Depression_AVEC2017.csv  (+ dev set combined)
@@ -23,22 +22,19 @@ Pipeline overview
 5.  Save results to results/results_classical.csv
 6.  Persist each trained model + vectorizer via joblib
 
-Class-imbalance handling
-------------------------
+Class-imbalance handling:
 The DAIC-WOZ dataset contains 57 depressed and 132 non-depressed participants
 (ratio ≈ 1:2.3).  All classifiers use class_weight='balanced', which scales
 class weights inversely proportional to class frequencies, giving the minority
 (depressed) class higher importance during optimisation.
 
-Primary evaluation metric
---------------------------
+Primary evaluation metric:
 Macro-F1 is used as the primary metric throughout GridSearchCV and the final
 comparison table because it weighs both classes equally, making it robust to
 class imbalance; a model that simply predicts the majority class can achieve
 high accuracy but yields a low macro-F1.
 
 Reference
----------
 Pedregosa, F., et al. (2011). Scikit-learn: Machine learning in Python.
 Journal of Machine Learning Research, 12, 2825–2830.
 """
@@ -64,18 +60,17 @@ from sklearn.metrics         import (
     recall_score,
 )
 
-# Local modules (run from project root or add scripts/ to path)
-sys.path.insert(0, str(Path(__file__).parent))
-from preprocess import load_participant_transcripts
-from clean_labels import clean_labels
+# Local modules — ensure project root is on sys.path so that
+# `scripts.data.*` namespace imports resolve when the script is run directly.
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from scripts.data.preprocess import load_participant_transcripts
+from scripts.data.clean_labels import clean_labels
 from evaluate import print_metrics, save_confusion_matrix_plot
 
 warnings.filterwarnings("ignore")
 
 
-# ---------------------------------------------------------------------------
 # Paths
-# ---------------------------------------------------------------------------
 
 BASE_DIR    = Path(__file__).parent.parent.parent   # project root
 LABEL_DIR   = BASE_DIR / "data" / "labels"
@@ -89,9 +84,7 @@ DEV_SPLIT_FILE   = LABEL_DIR / "dev_split_Depression_AVEC2017.csv"
 TEST_SPLIT_FILE  = LABEL_DIR / "full_test_split.csv"
 
 
-# ---------------------------------------------------------------------------
 # Helper: load official split IDs
-# ---------------------------------------------------------------------------
 
 def _load_split_ids(csv_path: Path, id_col: str = "Participant_ID") -> set:
     """Return a set of integer participant IDs from a split CSV."""
@@ -102,9 +95,7 @@ def _load_split_ids(csv_path: Path, id_col: str = "Participant_ID") -> set:
     return set(df[id_col].astype(int).tolist())
 
 
-# ---------------------------------------------------------------------------
 # Helper: macro metric summary
-# ---------------------------------------------------------------------------
 
 def _summarise(model_name: str, y_true, y_pred) -> dict:
     return {
@@ -118,23 +109,20 @@ def _summarise(model_name: str, y_true, y_pred) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
 # Main training function
-# ---------------------------------------------------------------------------
 
 def train_and_evaluate(verbose: bool = True) -> pd.DataFrame:
     """
     Run the full classical ML pipeline.
 
-    Returns
-    -------
+    Returns:
     pd.DataFrame with one row per model and key performance metrics.
     """
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
-    # ── 1. Labels & transcripts ──────────────────────────────────────────────
+    # 1. Labels & transcripts
     print("=" * 65)
     print("  DAIC-WOZ Classical ML Pipeline")
     print("=" * 65)
@@ -153,7 +141,7 @@ def train_and_evaluate(verbose: bool = True) -> pd.DataFrame:
     if dataset.empty:
         raise RuntimeError("Dataset is empty — check transcript and label paths.")
 
-    # ── 2. Official train / test split ───────────────────────────────────────
+    # 2. Official train / test split
     print("\n[3/4] Partitioning data using official DAIC-WOZ splits…")
 
     train_ids = _load_split_ids(TRAIN_SPLIT_FILE)
@@ -179,7 +167,7 @@ def train_and_evaluate(verbose: bool = True) -> pd.DataFrame:
         print(f"   Test  participants : {len(test_df)}"
               f"  (dep={sum(y_test)}, non-dep={len(y_test)-sum(y_test)})")
 
-    # ── 3. Define classifiers + hyperparameter grids ─────────────────────────
+    # 3. Define classifiers + hyperparameter grids
     print("\n[4/4] Training and evaluating models (GridSearchCV)…\n")
 
     # Shared TF-IDF parameter grid
@@ -278,14 +266,14 @@ def train_and_evaluate(verbose: bool = True) -> pd.DataFrame:
         row["best_params"]      = str(best_params)
         summary_rows.append(row)
 
-        # ── Persist model ──────────────────────────────────────────────────
+        # Persist model
         safe = mname.lower().replace(" ", "_").replace("(", "").replace(")", "")
         model_path = MODELS_DIR / f"{safe}_pipeline.joblib"
         joblib.dump(gs.best_estimator_, model_path)
         print(f"    Model saved → {model_path}")
         print()
 
-    # ── 4. Summary table ─────────────────────────────────────────────────────
+    # 4. Summary table
     results_df = pd.DataFrame(summary_rows)
 
     print("\n" + "=" * 65)
@@ -306,7 +294,7 @@ def train_and_evaluate(verbose: bool = True) -> pd.DataFrame:
     best_f1    = results_df.loc[best_idx, "f1_macro"]
     print(f"\n    Best model: {best_model}  (macro-F1 = {best_f1})\n")
 
-    # ── 5. Save results CSV ──────────────────────────────────────────────────
+    # 5. Save results CSV
     out_csv = RESULTS_DIR / "results_classical.csv"
     results_df.to_csv(out_csv, index=False)
     print(f"   Results saved → {out_csv.resolve()}")
@@ -314,9 +302,6 @@ def train_and_evaluate(verbose: bool = True) -> pd.DataFrame:
     return results_df
 
 
-# ---------------------------------------------------------------------------
 # CLI entry-point
-# ---------------------------------------------------------------------------
-
 if __name__ == "__main__":
     results = train_and_evaluate(verbose=True)

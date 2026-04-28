@@ -9,8 +9,7 @@ Pipeline:
   4. Merge with labels (Participant_ID, PHQ_Score, PHQ_Binary)
   5. Return a clean DataFrame: participant_id | text | PHQ_Binary
 
-Why Ellie's turns are excluded
--------------------------------
+Why Ellie's turns are excluded :
 Ellie (the virtual interviewer) delivers a fixed, standardised set of
 questions that are practically identical across every session.  Including her
 turns would inject interview-structure signals — correlated with the protocol,
@@ -21,15 +20,15 @@ as reduced lexical diversity, negative-affect vocabulary, or hedging language.
 
 import os
 import re
+import sys
 import pandas as pd
 from pathlib import Path
 from typing import Union
 
-
-# ---------------------------------------------------------------------------
+# Ensure project root is on sys.path so `scripts.data.clean_labels` resolves
+# when this file is executed directly (python scripts/data/preprocess.py).
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 # Public API
-# ---------------------------------------------------------------------------
-
 def load_participant_transcripts(
     transcript_dir: Union[str, Path],
     labels_df: pd.DataFrame,
@@ -38,8 +37,7 @@ def load_participant_transcripts(
     """
     Load DAIC-WOZ transcript files and merge with PHQ label data.
 
-    Parameters
-    ----------
+    Parameters:
     transcript_dir : str | Path
         Directory containing ``*_TRANSCRIPT.tsv`` or ``*_TRANSCRIPT.csv`` files.
     labels_df : pd.DataFrame
@@ -48,8 +46,7 @@ def load_participant_transcripts(
     verbose : bool
         Print a progress summary when True.
 
-    Returns
-    -------
+    Returns:
     pd.DataFrame
         Columns: ``participant_id`` (int), ``text`` (str), ``PHQ_Binary`` (int).
         One row per participant with both a valid transcript and a label.
@@ -79,7 +76,7 @@ def load_participant_transcripts(
     skipped_empty    = []
 
     for file_path in tsv_files:
-        # ── 1. Extract participant ID ────────────────────────────────────────
+        # 1. Extract participant ID 
         match = re.match(r"^(\d+)_TRANSCRIPT\.(tsv|csv)$", file_path.name)
         if not match:
             if verbose:
@@ -88,12 +85,12 @@ def load_participant_transcripts(
 
         participant_id = int(match.group(1))
 
-        # ── 2. Skip early if no label exists ────────────────────────────────
+        #  2. Skip early if no label exists 
         if participant_id not in label_index.index:
             skipped_no_label.append(participant_id)
             continue
 
-        # ── 3. Read tab-separated file ───────────────────────────────────────
+        #  3. Read tab-separated file 
         try:
             df = pd.read_csv(
                 file_path,
@@ -107,24 +104,24 @@ def load_participant_transcripts(
                 print(f"  [ERROR] Could not read {file_path.name}: {exc}")
             continue
 
-        # ── 4. Validate required columns ─────────────────────────────────────
+        #  4. Validate required columns 
         if "speaker" not in df.columns or "value" not in df.columns:
             if verbose:
                 print(f"  [SKIP] Missing 'speaker'/'value' columns in {file_path.name}")
             continue
 
-        # ── 5. Filter to Participant rows only ───────────────────────────────
+        #  5. Filter to Participant rows only 
         participant_rows = df[df["speaker"] == "Participant"]["value"].dropna()
 
-        # ── 6. Skip if empty after filtering ────────────────────────────────
+        #  6. Skip if empty after filtering 
         if participant_rows.empty:
             skipped_empty.append(participant_id)
             continue
 
-        # ── 7. Concatenate all turns into one document ───────────────────────
+        #  7. Concatenate all turns into one document 
         combined_text = " ".join(participant_rows.str.strip())
 
-        # ── 8. Retrieve label ────────────────────────────────────────────────
+        #  8. Retrieve label 
         row = label_index.loc[participant_id]
         phq_binary = int(row["PHQ_Binary"])
 
@@ -134,7 +131,7 @@ def load_participant_transcripts(
             "PHQ_Binary": phq_binary,
         })
 
-    # ── Assemble output DataFrame ────────────────────────────────────────────
+    #  Assemble output DataFrame 
     result_df = pd.DataFrame(records, columns=["participant_id", "text", "PHQ_Binary"])
     result_df = result_df.sort_values("participant_id").reset_index(drop=True)
 
@@ -166,19 +163,16 @@ def preprocess(
     """
     End-to-end convenience wrapper: clean labels → load transcripts → save.
 
-    Parameters
-    ----------
+    Parameters:
     transcript_dir : path to directory holding transcript files
     label_dir      : path to directory holding split CSVs
     output_path    : where to write the final dataset CSV
     verbose        : verbosity
-
     Returns
-    -------
     pd.DataFrame with columns participant_id, text, PHQ_Binary
     """
     # Import here to keep the module usable independently
-    from clean_labels import clean_labels  # noqa: PLC0415
+    from scripts.data.clean_labels import clean_labels  # noqa: PLC0415
 
     if verbose:
         print(" Step 1 — Cleaning labels…")
@@ -196,11 +190,7 @@ def preprocess(
 
     return dataset
 
-
-# ---------------------------------------------------------------------------
 # CLI entry-point
-# ---------------------------------------------------------------------------
-
 if __name__ == "__main__":
     import sys
 

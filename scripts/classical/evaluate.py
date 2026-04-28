@@ -13,7 +13,6 @@ LLM-based pipeline):
       Saves a publication-quality confusion matrix as a PNG figure.
 
 Reference
----------
 Pedregosa, F., et al. (2011). Scikit-learn: Machine learning in Python.
 Journal of Machine Learning Research, 12, 2825–2830.
 """
@@ -32,17 +31,13 @@ from sklearn.metrics import (
 )
 
 
-# ---------------------------------------------------------------------------
 # Constants
-# ---------------------------------------------------------------------------
 
 CLASS_NAMES = ["Non-depressed (0)", "Depressed (1)"]
 OUTPUT_DIR_DEFAULT = "results/figures"
 
 
-# ---------------------------------------------------------------------------
 # 1. Console metrics printer
-# ---------------------------------------------------------------------------
 
 def print_metrics(
     model_name: str,
@@ -54,8 +49,7 @@ def print_metrics(
     """
     Print a detailed classification report and confusion matrix to stdout.
 
-    Parameters
-    ----------
+    Parameters:
     model_name : Human-readable name of the model (used as heading).
     y_true     : Ground-truth binary labels (array-like, values 0/1).
     y_pred     : Predicted binary labels (array-like, values 0/1).
@@ -67,7 +61,7 @@ def print_metrics(
     print(f"    {model_name}")
     print(separator)
 
-    # ── Classification report ──────────────────────────────────────────────
+    # Classification report
     report = classification_report(
         y_true,
         y_pred,
@@ -77,7 +71,7 @@ def print_metrics(
     )
     print(report)
 
-    # ── Confusion matrix (text) ────────────────────────────────────────────
+    # Confusion matrix (text)
     cm = confusion_matrix(y_true, y_pred)
     print("  Confusion matrix:")
     print(f"                Predicted 0   Predicted 1")
@@ -91,9 +85,7 @@ def print_metrics(
     print(separator)
 
 
-# ---------------------------------------------------------------------------
 # 2. Confusion matrix PNG saver
-# ---------------------------------------------------------------------------
 
 def save_confusion_matrix_plot(
     model_name: str,
@@ -108,8 +100,7 @@ def save_confusion_matrix_plot(
     """
     Save a confusion matrix figure as a PNG file.
 
-    Parameters
-    ----------
+    Parameters:
     model_name  : Used as the figure title and to derive the output filename.
     y_true      : Ground-truth binary labels.
     y_pred      : Predicted binary labels.
@@ -119,8 +110,7 @@ def save_confusion_matrix_plot(
     colormap    : Matplotlib colormap name.
     dpi         : Image resolution in dots per inch.
 
-    Returns
-    -------
+    Returns:
     Path to the saved PNG file.
     """
     out_dir = Path(output_dir)
@@ -129,9 +119,9 @@ def save_confusion_matrix_plot(
     cm_raw  = confusion_matrix(y_true, y_pred)
     cm_norm = cm_raw.astype(float) / cm_raw.sum(axis=1, keepdims=True)
 
-    fig, ax = plt.subplots(figsize=(5, 4))
-    fig.patch.set_facecolor("#0f1117")
-    ax.set_facecolor("#0f1117")
+    fig, ax = plt.subplots(figsize=(3, 2.5))
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
 
     # Heatmap
     im = ax.imshow(cm_norm, interpolation="nearest", cmap=colormap, vmin=0.0, vmax=1.0)
@@ -139,56 +129,54 @@ def save_confusion_matrix_plot(
     # Colour bar
     cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     cbar.ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1, decimals=0))
-    cbar.ax.tick_params(colors="white", labelsize=8)
-    cbar.outline.set_edgecolor("#333344")
+    cbar.ax.tick_params(colors="black", labelsize=6)
+    cbar.outline.set_edgecolor("black")
 
     # Tick labels
     tick_labels = ["Non-dep (0)", "Depressed (1)"]
     ax.set_xticks([0, 1])
     ax.set_yticks([0, 1])
-    ax.set_xticklabels(tick_labels, color="white", fontsize=9)
-    ax.set_yticklabels(tick_labels, color="white", fontsize=9)
+    ax.set_xticklabels(tick_labels, color="black", fontsize=6)
+    ax.set_yticklabels(tick_labels, color="black", fontsize=6)
 
     # Annotate cells with normalised % and raw count
-    thresh = cm_norm.max() / 2.0
+    thresh = 0.5
     for i in range(2):
         for j in range(2):
             pct = cm_norm[i, j]
             raw = cm_raw[i, j]
-            color = "white" if pct < thresh else "#0f1117"
+            color = "white" if pct >= thresh else "black"
             ax.text(
                 j, i,
                 f"{pct:.1%}\n(n={raw})",
                 ha="center", va="center",
                 color=color,
-                fontsize=10, fontweight="bold",
+                fontsize=7, fontweight="bold",
             )
 
     # Labels & title
-    ax.set_xlabel("Predicted label", color="white", labelpad=8)
-    ax.set_ylabel("True label", color="white", labelpad=8)
-    ax.tick_params(colors="white")
+    ax.set_xlabel("Predicted label", color="black", labelpad=4, fontsize=7)
+    ax.set_ylabel("True label", color="black", labelpad=4, fontsize=7)
+    ax.tick_params(colors="black")
     for spine in ax.spines.values():
-        spine.set_edgecolor("#333344")
+        spine.set_edgecolor("black")
 
     title = f"Confusion Matrix — {model_name}"
-    ax.set_title(title, color="white", fontsize=11, fontweight="bold", pad=10)
+    ax.set_title(title, color="black", fontsize=8, fontweight="bold", pad=6)
 
     fig.tight_layout()
 
     # ── Save ──────────────────────────────────────────────────────────────
     safe_name = model_name.lower().replace(" ", "_").replace("/", "_")
     out_file  = out_dir / f"cm_{safe_name}.png"
-    fig.savefig(out_file, dpi=dpi, bbox_inches="tight", facecolor=fig.get_facecolor())
+    fig.savefig(out_file, dpi=dpi, bbox_inches="tight", facecolor="white")
     plt.close(fig)
 
     print(f"    Confusion matrix saved → {out_file.resolve()}")
     return out_file
 
 
-# ---------------------------------------------------------------------------
 # Quick standalone test
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     # Simulate a small imbalanced prediction scenario

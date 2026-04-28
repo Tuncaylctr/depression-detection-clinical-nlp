@@ -6,8 +6,7 @@ Provides DepressionDataset, a map-style Dataset that tokenises raw transcript
 strings into fixed-length input tensors for use with HuggingFace
 AutoModelForSequenceClassification.
 
-Usage
------
+Usage:
     from dataset_st import DepressionDataset
     from torch.utils.data import DataLoader
 
@@ -31,8 +30,7 @@ class DepressionDataset(Dataset):
     Each item is a dict containing the tokenised representation of one
     participant transcript along with its binary PHQ-8 label.
 
-    Parameters
-    ----------
+    Parameters:
     texts      : List[str]
         Raw participant transcript strings (one string per participant).
     labels     : List[int]
@@ -43,8 +41,7 @@ class DepressionDataset(Dataset):
         Maximum token sequence length; inputs longer than this are
         truncated; shorter inputs are padded to this length.
 
-    Notes
-    -----
+    Notes:
     ``return_tensors='pt'`` adds a leading batch dimension of size 1.
     We call ``.squeeze(0)`` on ``input_ids`` and ``attention_mask`` so
     that DataLoader can collate individual items into a proper batch of

@@ -67,11 +67,10 @@ from sklearn.metrics import (
 )
 from tqdm import tqdm
 
-# ---------------------------------------------------------------------------
 # Local modules — resolved relative to this file so the script works from
 # any working directory (project root, scripts/, etc.)
-# ---------------------------------------------------------------------------
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent / "data"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "classical"))
 from preprocess   import load_participant_transcripts
 from clean_labels import clean_labels
@@ -81,9 +80,7 @@ from dataset_st   import DepressionDataset
 warnings.filterwarnings("ignore")
 
 
-# ---------------------------------------------------------------------------
 # Paths (resolved from project root = three levels above this file)
-# ---------------------------------------------------------------------------
 BASE_DIR    = Path(__file__).parent.parent.parent
 LABEL_DIR   = BASE_DIR / "data" / "labels"
 TRANS_DIR   = BASE_DIR / "data" / "transcripts"
@@ -93,9 +90,7 @@ DEV_SPLIT_FILE   = LABEL_DIR / "dev_split_Depression_AVEC2017.csv"
 TEST_SPLIT_FILE  = LABEL_DIR / "full_test_split.csv"
 
 
-# ---------------------------------------------------------------------------
 # Shared helpers (also imported by evaluate_sentence_transformer.py)
-# ---------------------------------------------------------------------------
 
 def load_split_ids(csv_path: Path, id_col: str = "Participant_ID") -> set:
     """Return a set of integer participant IDs from a DAIC-WOZ split CSV."""
@@ -169,12 +164,10 @@ def run_inference(model, loader, device) -> tuple:
     return all_true, all_preds
 
 
-# ---------------------------------------------------------------------------
 # Main training function
-# ---------------------------------------------------------------------------
 
 def train(args) -> None:
-    # ── Reproducibility ───────────────────────────────────────────────────────
+    # Reproducibility
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -191,7 +184,7 @@ def train(args) -> None:
     print(f"  DAIC-WOZ Sentence Transformer Pipeline — {args.model_name}")
     print("=" * 65)
 
-    # ── Resolve output directories from project root ──────────────────────────
+    # Resolve output directories from project root
     output_dir  = Path(args.output_dir)
     results_dir = Path(args.results_dir)
     if not output_dir.is_absolute():
@@ -204,7 +197,7 @@ def train(args) -> None:
     results_dir.mkdir(parents=True, exist_ok=True)
     figures_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── 1. Labels ──────────────────────────────────────────────────────────────
+    # 1. Labels
     print("\n[1/5] Cleaning labels…")
     labels_df = clean_labels(
         label_dir=str(LABEL_DIR),
@@ -213,14 +206,14 @@ def train(args) -> None:
         verbose=True,
     )
 
-    # ── 2. Transcripts ─────────────────────────────────────────────────────────
+    # 2. Transcripts
     print("\n[2/5] Loading transcripts…")
     dataset = load_participant_transcripts(TRANS_DIR, labels_df, verbose=True)
 
     if dataset.empty:
         raise RuntimeError("Dataset is empty — check transcript and label paths.")
 
-    # ── 3. Official train / test split ─────────────────────────────────────────
+    # 3. Official train / test split
     print("\n[3/5] Partitioning data using official DAIC-WOZ splits…")
     train_ids = load_split_ids(TRAIN_SPLIT_FILE)
     dev_ids   = load_split_ids(DEV_SPLIT_FILE)
@@ -238,7 +231,7 @@ def train(args) -> None:
     X_test = test_df["text"].tolist()
     y_test = test_df["PHQ_Binary"].tolist()
 
-    # ── 4. Stratified 15 % validation hold-out from the training pool ──────────
+    # 4. Stratified 15 % validation hold-out from the training pool
     X_train, X_val, y_train, y_val = train_test_split(
         X_pool, y_pool,
         test_size=0.15,
@@ -253,7 +246,7 @@ def train(args) -> None:
     print(f"   Test  : {len(X_test):3d}  "
           f"(dep={sum(y_test)}, non-dep={len(y_test) - sum(y_test)})")
 
-    # ── 5. Model + tokeniser ───────────────────────────────────────────────────
+    # 5. Model + tokeniser
     print(f"\n[4/5] Loading tokeniser and model: {args.model_name} …")
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
 
@@ -279,14 +272,14 @@ def train(args) -> None:
     )
     model.to(device)
 
-    # ── DataLoaders ────────────────────────────────────────────────────────────
+    # DataLoaders
     train_ds = DepressionDataset(X_train, y_train, tokenizer, max_length=args.max_length)
     val_ds   = DepressionDataset(X_val,   y_val,   tokenizer, max_length=args.max_length)
 
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
     val_loader   = DataLoader(val_ds,   batch_size=16,              shuffle=False)
 
-    # ── Optimiser & scheduler ──────────────────────────────────────────────────
+    # Optimiser & scheduler
     optimizer    = AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
     total_steps  = len(train_loader) * args.epochs
     warmup_steps = int(total_steps * args.warmup_ratio)
@@ -296,16 +289,17 @@ def train(args) -> None:
         num_training_steps=total_steps,
     )
 
-    # ── Training loop ──────────────────────────────────────────────────────────
+    # Training loop
     print(f"\n[5/5] Fine-tuning {args.model_name} …")
     print(f"   Epochs={args.epochs}  BatchSize={args.batch_size}  "
           f"LR={args.lr}  WarmupRatio={args.warmup_ratio}  Patience={args.patience}\n")
 
     best_val_f1        = -1.0
     epochs_no_improve  = 0
+    epoch_log          = []   # accumulates per-epoch metrics for learning-curve plots
 
     for epoch in range(1, args.epochs + 1):
-        # ── Train pass ─────────────────────────────────────────────────────────
+        # Train pass
         model.train()
         total_loss = 0.0
         bar = tqdm(train_loader, desc=f"Epoch {epoch:>2d}/{args.epochs}", leave=True)
@@ -330,14 +324,20 @@ def train(args) -> None:
 
         avg_train_loss = total_loss / len(train_loader)
 
-        # ── Validation pass ────────────────────────────────────────────────────
+        # Validation pass
         y_val_true, y_val_pred = run_inference(model, val_loader, device)
         val_f1 = f1_score(y_val_true, y_val_pred, average="macro", zero_division=0)
 
         print(f"  Epoch {epoch:>2d}/{args.epochs}  "
               f"train_loss={avg_train_loss:.4f}  val_macro_f1={val_f1:.4f}")
 
-        # ── Early stopping / checkpoint ────────────────────────────────────────
+        epoch_log.append({
+            "epoch":        epoch,
+            "train_loss":   round(avg_train_loss, 6),
+            "val_macro_f1": round(val_f1, 6),
+        })
+
+        # Early stopping / checkpoint
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
             epochs_no_improve = 0
@@ -352,7 +352,16 @@ def train(args) -> None:
                       f"(best val macro-F1 = {best_val_f1:.4f})")
                 break
 
-    # ── Load best checkpoint & evaluate on the held-out test set ─────────────
+    # Save per-epoch log for learning-curve plots.
+    # Use run_name when available (hyperparameter search) so each combination
+    # gets its own file rather than all jhu runs overwriting mmbert-base.csv.
+    _epoch_label = getattr(args, "run_name", None) or args.model_name.split("/")[-1]
+    model_label_safe = _epoch_label.lower().replace(" ", "_")
+    epoch_csv = results_dir / f"epoch_metrics_{model_label_safe}.csv"
+    pd.DataFrame(epoch_log).to_csv(epoch_csv, index=False)
+    print(f"   Epoch metrics saved → {epoch_csv}")
+
+    # Load best checkpoint & evaluate on the held-out test set
     print(f"\n Loading best checkpoint from {output_dir} …")
     best_tokenizer = AutoTokenizer.from_pretrained(str(output_dir))
     best_model     = AutoModelForSequenceClassification.from_pretrained(str(output_dir))
@@ -363,8 +372,8 @@ def train(args) -> None:
 
     y_test_true, y_test_pred = run_inference(best_model, test_loader, device)
 
-    # Use the short model name (last path component) as the display label
-    model_label = args.model_name.split("/")[-1]
+    # Use run_name if provided (e.g. from hyperparameter search), else fall back to short model name
+    model_label = getattr(args, "run_name", None) or args.model_name.split("/")[-1]
 
     print_metrics(model_label, y_test_true, y_test_pred)
     save_confusion_matrix_plot(
@@ -381,9 +390,7 @@ def train(args) -> None:
     return {"best_val_f1": round(best_val_f1, 4), **metrics}
 
 
-# ---------------------------------------------------------------------------
 # CLI entry-point
-# ---------------------------------------------------------------------------
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(

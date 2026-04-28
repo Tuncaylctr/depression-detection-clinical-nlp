@@ -8,8 +8,7 @@ Loads a checkpoint saved by train_sentence_transformer.py
 held-out test set without re-training.  Produces the same metrics and
 confusion matrix PNG as the training script.
 
-Usage
------
+Usage:
   python scripts/evaluate_sentence_transformer.py \\
       --checkpoint_dir models/mbert
 
@@ -27,10 +26,9 @@ import torch
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-# ---------------------------------------------------------------------------
 # Local modules
-# ---------------------------------------------------------------------------
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent / "data"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "classical"))
 from preprocess   import load_participant_transcripts
 from clean_labels import clean_labels
@@ -52,9 +50,7 @@ from train_sentence_transformer import (
 warnings.filterwarnings("ignore")
 
 
-# ---------------------------------------------------------------------------
 # Evaluation function
-# ---------------------------------------------------------------------------
 
 def evaluate(args) -> None:
     if torch.cuda.is_available():
@@ -76,7 +72,7 @@ def evaluate(args) -> None:
     results_dir.mkdir(parents=True, exist_ok=True)
     figures_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── 1. Labels & transcripts ───────────────────────────────────────────────
+    # 1. Labels & transcripts
     print("\n[1/3] Loading data…")
     labels_df = clean_labels(
         label_dir=str(LABEL_DIR),
@@ -89,7 +85,7 @@ def evaluate(args) -> None:
     if dataset.empty:
         raise RuntimeError("Dataset is empty — check transcript and label paths.")
 
-    # ── 2. Test split ─────────────────────────────────────────────────────────
+    # 2. Test split
     test_ids = load_split_ids(TEST_SPLIT_FILE)
     test_df  = dataset[dataset["participant_id"].isin(test_ids)].reset_index(drop=True)
 
@@ -98,16 +94,16 @@ def evaluate(args) -> None:
     print(f"   Test participants : {len(test_df)}  "
           f"(dep={sum(y_test)}, non-dep={len(y_test) - sum(y_test)})")
 
-    # ── 3. Load checkpoint ────────────────────────────────────────────────────
+    # 3. Load checkpoint
     print(f"\n[2/3] Loading checkpoint from {checkpoint_dir} …")
     tokenizer = AutoTokenizer.from_pretrained(str(checkpoint_dir))
     model     = AutoModelForSequenceClassification.from_pretrained(str(checkpoint_dir))
     model.to(device)
 
-    # Use the checkpoint directory name as the model display label
-    model_label = checkpoint_dir.name
+    # Use --model_label if provided, otherwise fall back to the directory name
+    model_label = args.model_label if args.model_label else checkpoint_dir.name
 
-    # ── 4. Inference & evaluation ─────────────────────────────────────────────
+    # 4. Inference & evaluation
     print(f"\n[3/3] Running inference on test set…")
     test_ds     = DepressionDataset(X_test, y_test, tokenizer, max_length=args.max_length)
     test_loader = DataLoader(test_ds, batch_size=args.batch_size, shuffle=False)
@@ -126,9 +122,7 @@ def evaluate(args) -> None:
     print(f"\n Done. Test macro-F1 = {metrics['macro_f1']:.4f}")
 
 
-# ---------------------------------------------------------------------------
 # CLI entry-point
-# ---------------------------------------------------------------------------
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -154,6 +148,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--results_dir", default="results/sentence_transformers/",
         help="Directory to save evaluation CSV and confusion matrix PNG (default: results/sentence_transformers/)",
+    )
+    parser.add_argument(
+        "--model_label", default=None,
+        help="Override the display label / PNG filename (default: checkpoint directory name)",
     )
     return parser.parse_args()
 

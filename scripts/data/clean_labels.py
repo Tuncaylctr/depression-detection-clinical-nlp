@@ -16,8 +16,7 @@ binary class label:
 
 Output: data/processed/labels.csv  (columns: Participant_ID, PHQ_Score, PHQ_Binary)
 
-Clinical threshold rationale
------------------------------
+Clinical threshold rationale:
 The PHQ-8 cutpoint of 10 is widely used in clinical practice and is the
 official threshold adopted by the DAIC-WOZ challenge organisers (Gratch et al.,
 2014).  Scores of 10–14 indicate moderate depression, 15–19 moderately severe,
@@ -29,18 +28,14 @@ import pandas as pd
 from pathlib import Path
 
 
-# ---------------------------------------------------------------------------
 # Constants — actual filenames in data/labels/
-# ---------------------------------------------------------------------------
 
 TRAIN_FILE = "train_split_Depression_AVEC2017.csv"
 DEV_FILE   = "dev_split_Depression_AVEC2017.csv"
 TEST_FILE  = "full_test_split.csv"          # the version that includes PHQ scores
 
 
-# ---------------------------------------------------------------------------
 # Core function
-# ---------------------------------------------------------------------------
 
 def clean_labels(
     label_dir: str = "data/labels",
@@ -52,16 +47,14 @@ def clean_labels(
     """
     Load, merge, and clean DAIC-WOZ label files.
 
-    Parameters
-    ----------
+    Parameters:
     label_dir       : Directory that contains the three split CSVs.
     output_dir      : Directory where the cleaned CSV will be saved.
     output_filename : Name of the output file (default: labels.csv).
     threshold       : PHQ score at or above which PHQ_Binary = 1 (default: 10).
     verbose         : Print processing information.
 
-    Returns
-    -------
+    Returns:
     pd.DataFrame
         Columns: Participant_ID (int), PHQ_Score (int), PHQ_Binary (int).
     """
@@ -69,7 +62,7 @@ def clean_labels(
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    # ── Define the three source files ────────────────────────────────────────
+    # Define the three source files
     sources = [
         (label_path / TRAIN_FILE, "PHQ8_Score"),
         (label_path / DEV_FILE,   "PHQ8_Score"),
@@ -121,24 +114,24 @@ def clean_labels(
             f"Expected: {TRAIN_FILE}, {DEV_FILE}, {TEST_FILE}"
         )
 
-    # ── Combine all splits ───────────────────────────────────────────────────
+    # Combine all splits
     merged = pd.concat(dfs, ignore_index=True)
 
     n_before = len(merged)
     merged = merged.drop_duplicates(subset=["Participant_ID"], keep="first")
     n_dupes = n_before - len(merged)
 
-    # ── Binary classification label ──────────────────────────────────────────
+    # Binary classification label
     merged["PHQ_Binary"] = (merged["PHQ_Score"] >= threshold).astype(int)
 
-    # ── Sort and finalise ────────────────────────────────────────────────────
+    # Sort and finalise
     result = (
         merged[["Participant_ID", "PHQ_Score", "PHQ_Binary"]]
         .sort_values("Participant_ID")
         .reset_index(drop=True)
     )
 
-    # ── Save ─────────────────────────────────────────────────────────────────
+    # Save
     out_file = output_path / output_filename
     result.to_csv(out_file, index=False)
 
@@ -157,10 +150,7 @@ def clean_labels(
     return result
 
 
-# ---------------------------------------------------------------------------
 # CLI entry-point
-# ---------------------------------------------------------------------------
-
 if __name__ == "__main__":
     threshold = int(sys.argv[1]) if len(sys.argv) > 1 else 10
     label_dir = sys.argv[2] if len(sys.argv) > 2 else "data/labels"

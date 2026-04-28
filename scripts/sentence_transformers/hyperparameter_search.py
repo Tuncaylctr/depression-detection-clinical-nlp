@@ -32,13 +32,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 from train_sentence_transformer import train, BASE_DIR
 
 
-# ---------------------------------------------------------------------------
 # Search grid — edit these lists to add or remove values
-# ---------------------------------------------------------------------------
 
 MODELS = [
     "bert-base-multilingual-cased",
     "xlm-roberta-base",
+    "jhu-clsp/mmBERT-base",
 ]
 
 GRID = {
@@ -57,9 +56,7 @@ FIXED = {
 }
 
 
-# ---------------------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------------------------
 
 def build_run_name(model_name: str, combo: dict) -> str:
     """Short identifier for one (model, hyperparams) combination."""
@@ -78,9 +75,7 @@ def all_combinations(models, grid):
             yield model, dict(zip(keys, combo_values))
 
 
-# ---------------------------------------------------------------------------
 # Main
-# ---------------------------------------------------------------------------
 
 def run_search(args_cli):
     models     = args_cli.models
@@ -139,6 +134,7 @@ def run_search(args_cli):
 
         train_args = Namespace(
             model_name       = model_name,
+            run_name         = run_name,
             max_length       = FIXED["max_length"],
             batch_size       = FIXED["batch_size"],
             epochs           = FIXED["epochs"],
@@ -177,7 +173,7 @@ def run_search(args_cli):
         pd.DataFrame(rows).to_csv(search_csv, index=False)
         print(f"\n  Intermediate results saved → {search_csv}")
 
-    # ── Final ranked summary ──────────────────────────────────────────────────
+    # Final ranked summary
     df = pd.DataFrame(rows).sort_values("best_val_f1", ascending=False)
 
     print("\n" + "=" * 70)
@@ -207,9 +203,7 @@ def run_search(args_cli):
     print(f"\n  Full results saved → {search_csv.resolve()}")
 
 
-# ---------------------------------------------------------------------------
 # CLI
-# ---------------------------------------------------------------------------
 
 def parse_args():
     parser = argparse.ArgumentParser(
