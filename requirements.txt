@@ -16,6 +16,15 @@ seaborn>=0.13
 torch>=2.0
 transformers>=4.40
 
+## LLM fine-tuning — LoRA / QLoRA (Experiments 7 & 8)
+peft>=0.10
+bitsandbytes>=0.43
+accelerate>=0.29
+
 ## Progress bars
 tqdm>=4.66
+
+## GPT API — zero-shot / few-shot inference (Experiment 9)
+openai>=1.0
+python-dotenv>=1.0
 

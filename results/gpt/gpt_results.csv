@@ -1,0 +1,3 @@
+model,accuracy,precision_macro,recall_macro,f1_macro,f1_depressed,f1_nondepressed,gpt_model
+GPT Zero-Shot,0.8085,0.7708,0.7814,0.7756,0.6897,0.8615,gpt-5.5
+GPT Few-Shot,0.7872,0.748,0.7662,0.7552,0.6667,0.8438,gpt-5.5
